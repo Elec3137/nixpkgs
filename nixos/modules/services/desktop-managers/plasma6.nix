@@ -42,6 +42,10 @@ in
         default = [ "noto-fonts" ];
         example = "noto-fonts-lgc-plus";
       };
+
+      drKonqi.enable = lib.mkEnableOption "kde's crash handler" // {
+        default = true;
+      };
     };
 
     environment.plasma6.excludePackages = mkOption {
@@ -117,7 +121,6 @@ in
           polkit-kde-agent-1 # polkit auth ui
           plasma-desktop
           plasma-workspace
-          drkonqi # crash handler
           kde-inotify-survey # warns the user on low inotifywatch limits
 
           # Application integration
@@ -146,7 +149,8 @@ in
           libksysguard
           systemsettings
           kcmutils
-        ];
+        ]
+        ++ lib.optional cfg.drKonqi.enable drkonqi;
         optionalPackages = [
           aurorae
           plasma-browser-integration
@@ -223,8 +227,8 @@ in
     environment.pathsToLink = [
       # FIXME: modules should link subdirs of `/share` rather than relying on this
       "/share"
-      "/libexec" # for drkonqi
-    ];
+    ]
+    ++ lib.optional cfg.drKonqi.enable "/libexec";
 
     environment.etc."X11/xkb".source = config.services.xserver.xkb.dir;
 
@@ -282,8 +286,10 @@ in
     ];
 
     # Set up Dr. Konqi as crash handler
-    systemd.packages = [ kdePackages.drkonqi ];
-    systemd.services."drkonqi-coredump-processor@".wantedBy = [ "systemd-coredump@.service" ];
+    systemd.packages = lib.mkIf cfg.drKonqi.enable [ kdePackages.drkonqi ];
+    systemd.services."drkonqi-coredump-processor@".wantedBy = lib.mkIf cfg.drKonqi.enable [
+      "systemd-coredump@.service"
+    ];
 
     xdg.icons.enable = true;
     xdg.icons.fallbackCursorThemes = mkDefault [ "breeze_cursors" ];
